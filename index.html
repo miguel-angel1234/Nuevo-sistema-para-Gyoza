@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gyoza House — Sistema</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ═══════ HEADER ═══════ -->
+<header class="header">
+  <div class="logo-area">
+    <div class="logo-mark">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="52" cy="36" r="26" fill="#c8102e"/>
+        <rect x="28" y="30" width="30" height="3.5" rx="1.5" fill="#111"/>
+        <rect x="25" y="37" width="30" height="2.5" rx="1.2" fill="#111"/>
+        <rect x="35" y="39.5" width="3.5" height="18" rx="1.5" fill="#111"/>
+        <rect x="47.5" y="39.5" width="3.5" height="18" rx="1.5" fill="#111"/>
+        <rect x="24" y="27" width="11" height="3.2" rx="1.5" fill="#111"/>
+        <rect x="51" y="27" width="11" height="3.2" rx="1.5" fill="#111"/>
+        <rect x="4" y="44" width="35" height="26" rx="3" fill="white" opacity="0.92"/>
+        <text x="6" y="56" font-family="Arial Black, sans-serif" font-size="7.5" font-weight="900" fill="#111">GYOZA</text>
+        <text x="6" y="66" font-family="Arial Black, sans-serif" font-size="7.5" font-weight="900" fill="#111">HOUSE</text>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="logo-name">Gyoza House</div>
+      <div class="logo-tagline">Ramen · Gyozas · Comida Asiática</div>
+    </div>
+  </div>
+  <nav class="nav-tabs">
+    <div class="nav-tab" onclick="goTo('dashboard')" id="tab-dashboard"><span class="tab-icon">🏮</span>Inicio</div>
+    <div class="nav-tab active" onclick="goTo('ventas')" id="tab-ventas"><span class="tab-icon">🍜</span>Ventas</div>
+    <div class="nav-tab" onclick="goTo('inventario')" id="tab-inventario"><span class="tab-icon">📦</span>Inventario</div>
+    <div class="nav-tab" onclick="goTo('historial')" id="tab-historial"><span class="tab-icon">📊</span>Historial</div>
+    <div class="nav-tab" onclick="goTo('insumos')" id="tab-insumos"><span class="tab-icon">🥢</span>Insumos</div>
+  </nav>
+</header>
+
+<!-- ═══════ MAIN ═══════ -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="sec-dashboard" class="section active">
+    <div id="dash-caja-banner"></div>
+    <div class="g4" id="dash-stats" style="margin-bottom:20px"></div>
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;margin-bottom:18px;align-items:start" id="dash-mid-grid">
+      <div class="card">
+        <div class="section-label">Tendencia</div>
+        <div class="card-title" style="margin-bottom:16px">Ventas últimos 7 días</div>
+        <div style="position:relative;height:180px">
+          <canvas id="dash-chart-semana"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label">Ranking</div>
+        <div class="card-title" style="margin-bottom:14px">Top productos</div>
+        <div id="dash-top-prods"></div>
+      </div>
+    </div>
+    <div class="g2" style="margin-bottom:18px;align-items:start">
+      <div class="card">
+        <div class="section-label">Comportamiento</div>
+        <div class="card-title" style="margin-bottom:14px">Hora pico del día</div>
+        <div style="position:relative;height:130px">
+          <canvas id="dash-chart-horas"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label">Alertas</div>
+        <div class="card-title" style="margin-bottom:14px">Insumos críticos</div>
+        <div id="dash-insumos-criticos"></div>
+      </div>
+    </div>
+    <div class="card" id="dash-ultimo-cierre-wrap">
+      <div class="section-label">Caja</div>
+      <div class="card-title" style="margin-bottom:14px">Resumen del último turno</div>
+      <div id="dash-ultimo-cierre"></div>
+    </div>
+    <div class="card" id="dash-egresos-wrap" style="margin-top:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="section-label">Movimientos</div>
+          <div class="card-title" style="margin:0">Egresos del turno</div>
+        </div>
+        <button class="btn btn-sm" style="background:rgba(200,16,46,.18);color:#ff8888;border:1px solid rgba(200,16,46,.35)" onclick="abrirModalEgreso()">💸 Nuevo egreso</button>
+      </div>
+      <div id="dash-egresos-turno"></div>
+    </div>
+  </div>
+
+  <!-- VENTAS -->
+  <div id="sec-ventas" class="section">
+    <div id="alert-ventas"></div>
+    <div class="cuentas-bar" id="cuentas-bar"></div>
+    <div class="venta-layout">
+      <div>
+        <div class="card">
+          <div class="section-label">Punto de venta</div>
+          <div class="card-title">Seleccionar productos</div>
+          <input type="text" id="buscar" placeholder="Buscar por nombre o categoría…" oninput="filtrarProds()" autocomplete="off">
+          <div id="cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;margin-bottom:4px"></div>
+          <div class="prod-grid" id="prod-grid"></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="section-label">Agregar manual</div>
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
+            <div class="field" style="margin:0"><label>Producto</label><select id="sel-prod"></select></div>
+            <div class="field" style="margin:0"><label>Cant.</label><input type="number" id="sel-qty" value="1" min="1" style="width:70px"></div>
+            <button class="btn btn-dark" onclick="addFromSel()">Agregar</button>
+          </div>
+        </div>
+      </div>
+      <div class="carrito">
+        <div class="carrito-head">
+          <div class="carrito-head-title" id="carrito-title">Orden actual</div>
+          <div class="carrito-head-sub">🍜 Gyoza House · <span id="carrito-count">0 productos</span></div>
+        </div>
+        <div class="carrito-body" id="carrito-body">
+          <div class="empty" style="padding:30px"><div class="empty-icon">🥢</div><div class="empty-text">Agrega productos</div></div>
+        </div>
+        <div class="carrito-foot">
+          <div class="total-row">
+            <span class="total-label">Total</span>
+            <span class="total-value" id="total-value">$0</span>
+          </div>
+          <hr class="deco">
+          <div class="field">
+            <label>Pago del cliente</label>
+            <input type="number" id="pago-input" placeholder="Ingrese el valor recibido" oninput="calcCambio()" min="0">
+          </div>
+          <div class="cambio-box" id="cambio-box" style="display:none">
+            <div class="cambio-line"><span class="cl-label">Total</span><span class="cl-value" id="c-total"></span></div>
+            <div class="cambio-line"><span class="cl-label">Recibido</span><span class="cl-value" id="c-pago"></span></div>
+            <hr class="deco" style="margin:6px 0">
+            <div class="cambio-line"><span class="cl-label">Cambio</span><span class="cl-value" id="c-cambio"></span></div>
+          </div>
+          <button class="btn btn-red btn-full" onclick="registrarVenta()">Registrar venta</button>
+          <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="limpiarCarrito()">Limpiar orden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTARIO -->
+  <div id="sec-inventario" class="section">
+    <div id="alert-inv"></div>
+    <div class="g2" style="align-items:start;margin-bottom:18px">
+      <div class="card">
+        <div class="section-label">Productos</div>
+        <div class="card-title">Nuevo producto</div>
+        <div class="field"><label>Nombre del producto</label><input type="text" id="inv-nombre" placeholder="Ej: Ramen de cerdo"></div>
+        <div class="field"><label>Precio de venta</label><input type="number" id="inv-precio" placeholder="Ej: 36000" min="0"></div>
+        <div class="g2">
+          <div class="field"><label>Stock inicial</label><input type="number" id="inv-stock" placeholder="Ej: 50" min="0"></div>
+          <div class="field"><label>Categoría</label><input type="text" id="inv-cat" placeholder="Ej: Ramen"></div>
+        </div>
+        <button class="btn btn-red" onclick="guardarProd()">Guardar producto</button>
+      </div>
+      <div class="card">
+        <div class="section-label">Mercancía</div>
+        <div class="card-title">Entrada de stock</div>
+        <div class="field"><label>Producto</label><select id="ent-prod"></select></div>
+        <div class="field"><label>Cantidad que ingresa</label><input type="number" id="ent-qty" placeholder="Ej: 24" min="1"></div>
+        <button class="btn btn-green" onclick="registrarEntrada()">Registrar entrada</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">Inventario</div>
+      <div class="card-title">Productos actuales</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="sec-historial" class="section">
+    <div class="g4" id="stats-grid" style="margin-bottom:24px"></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="section-label">Registro</div>
+          <div class="card-title" style="margin:0">Ventas por día</div>
+        </div>
+        <div>
+          <button class="btn btn-danger btn-sm" onclick="borrarHistorial()">Borrar todo</button>
+          <button class="btn btn-green btn-sm" onclick="exportCSV()" style="margin-left:8px">Exportar Excel</button>
+        </div>
+      </div>
+      <div id="historial-lista"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════ INSUMOS (fuera del main) ═══════ -->
+<div id="sec-insumos" class="section" style="display:none;position:relative;z-index:1;padding:28px 20px;max-width:1280px;margin:0 auto">
+  <div id="alert-insumos"></div>
+  <div id="insumos-alertas-wrap"></div>
+  <div class="g4" id="insumos-stats" style="margin-bottom:20px"></div>
+  <div class="g2" style="align-items:start;margin-bottom:18px">
+    <div class="card">
+      <div class="section-label">Almacén</div>
+      <div class="card-title">Nuevo insumo</div>
+      <div class="field"><label>Nombre del insumo</label><input type="text" id="ins-nombre" placeholder="Ej: Caldo de cerdo"></div>
+      <div class="g2">
+        <div class="field"><label>Unidad de medida</label>
+          <select id="ins-unidad">
+            <option value="ml">ml (mililitros)</option>
+            <option value="L">L (litros)</option>
+            <option value="g">g (gramos)</option>
+            <option value="kg">kg (kilogramos)</option>
+            <option value="und">und (unidades)</option>
+            <option value="bolsa">bolsa</option>
+            <option value="paquete">paquete</option>
+            <option value="caja">caja</option>
+          </select>
+        </div>
+        <div class="field"><label>Categoría</label><input type="text" id="ins-cat" placeholder="Ej: Caldos"></div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Stock inicial</label><input type="number" id="ins-stock" placeholder="0" min="0" step="any"></div>
+        <div class="field"><label>Alerta cuando baje de</label><input type="number" id="ins-minimo" placeholder="Ej: 5" min="0" step="any"></div>
+      </div>
+      <button class="btn btn-red" onclick="guardarInsumo()">Guardar insumo</button>
+    </div>
+    <div class="card">
+      <div class="section-label">Mercancía</div>
+      <div class="card-title">Entrada de insumos</div>
+      <div class="field"><label>Insumo</label><select id="ins-ent-prod"></select></div>
+      <div class="g2">
+        <div class="field"><label>Cantidad que entra</label><input type="number" id="ins-ent-qty" placeholder="Ej: 10" min="0" step="any"></div>
+        <div class="field"><label>Costo unitario (opcional)</label><input type="number" id="ins-ent-costo" placeholder="Ej: 3500" min="0"></div>
+      </div>
+      <div class="field"><label>Nota (opcional)</label><input type="text" id="ins-ent-nota" placeholder="Ej: Compra semana 12"></div>
+      <button class="btn btn-green" onclick="registrarEntradaInsumo()">Registrar entrada</button>
+      <hr class="deco" style="margin:18px 0 14px">
+      <div class="section-label">Ajuste manual</div>
+      <div class="g2">
+        <div class="field"><label>Insumo</label><select id="ins-adj-prod"></select></div>
+        <div class="field"><label>Nuevo stock</label><input type="number" id="ins-adj-qty" placeholder="Ej: 8" min="0" step="any"></div>
+      </div>
+      <button class="btn btn-ghost" onclick="ajustarStockInsumo()">Ajustar stock</button>
+    </div>
+  </div>
+
+  <!-- RECETAS -->
+  <div class="card" style="margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div class="section-label">Producción</div>
+        <div class="card-title" style="margin:0">Recetas de productos</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="receta-filtro-prod" style="width:auto;padding:8px 12px;font-size:13px" onchange="renderRecetas()">
+          <option value="">Todos los productos</option>
+        </select>
+        <button class="btn btn-dark btn-sm" onclick="abrirModalReceta()">+ Nueva receta</button>
+      </div>
+    </div>
+    <div id="recetas-lista"></div>
+  </div>
+
+  <!-- TABLA INSUMOS -->
+  <div class="card" style="margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div class="section-label">Inventario</div>
+        <div class="card-title" style="margin:0">Insumos actuales</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="exportInsumosCSV()">Exportar CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Insumo</th><th>Categoría</th><th>Stock</th><th>Unidad</th><th>Mínimo</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="ins-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTORIAL CONSUMO -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div class="section-label">Trazabilidad</div>
+        <div class="card-title" style="margin:0">Historial de consumo</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="if(confirm('¿Borrar historial de consumo?')){consumoLog=[];saveInsumos();renderHistorialConsumo()}">Borrar historial</button>
+    </div>
+    <div id="consumo-lista"></div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL RECETA ═══════ -->
+<div id="modal-receta-bg" class="modal-backdrop" style="display:none" onclick="cerrarModalReceta(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="modal-title">Receta de producto</div>
+    <div class="modal-sub">Define cuánto insumo se usa por unidad vendida</div>
+    <div class="field"><label>Producto del menú</label><select id="receta-prod-sel"></select></div>
+    <div id="receta-ingredientes"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addIngredienteRow()" style="margin-bottom:14px">+ Agregar insumo</button>
+    <hr class="deco">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" style="flex:1;min-width:140px" onclick="guardarReceta()">Guardar receta</button>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModalReceta()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL EDITAR VENTA ═══════ -->
+<div id="modal-bg" class="modal-backdrop" style="display:none" onclick="cerrarModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Editar venta</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div style="display:grid;grid-template-columns:1fr 80px 90px 28px;gap:6px;margin-bottom:6px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Producto</span>
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Cant.</span>
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Precio</span>
+      <span></span>
+    </div>
+    <div id="modal-items"></div>
+    <hr class="deco">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span style="font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Total corregido</span>
+      <span style="font-family:var(--f-display);font-size:28px;color:var(--red-soft)" id="modal-total">$0</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" style="flex:1;min-width:140px" onclick="guardarEdicion()">Guardar cambios</button>
+      <button class="btn btn-danger btn-sm" onclick="eliminarVenta()">Eliminar venta</button>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL APERTURA DE CAJA ═══════ -->
+<div id="modal-apertura-bg" class="modal-backdrop" style="display:none" onclick="if(event.target===this&&cajaAbierta)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:8px">🏮</div>
+      <div class="modal-title" style="font-size:26px;text-align:center">Apertura de caja</div>
+      <div class="modal-sub" style="text-align:center">Registra el efectivo con el que inicia el turno</div>
+    </div>
+    <div id="alert-caja"></div>
+    <div class="field">
+      <label>Nombre del cajero / turno</label>
+      <input type="text" id="ap-cajero" placeholder="Ej: Turno mañana · Ana">
+    </div>
+    <div class="field">
+      <label>Monto de apertura (efectivo en caja)</label>
+      <input type="number" id="ap-monto" placeholder="Ej: 100000" min="0" style="font-size:20px;padding:14px">
+    </div>
+    <div class="field">
+      <label>Nota opcional</label>
+      <input type="text" id="ap-nota" placeholder="Ej: Turno del sábado">
+    </div>
+    <button class="btn btn-red btn-full" onclick="abrirCaja()" style="margin-top:8px;font-size:15px">
+      ✅ Abrir caja
+    </button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL CIERRE DE CAJA ═══════ -->
+<div id="modal-cierre-bg" class="modal-backdrop" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;max-height:92vh;overflow-y:auto">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:32px;margin-bottom:6px">🔐</div>
+      <div class="modal-title" style="font-size:24px;text-align:center">Cierre de caja</div>
+      <div class="modal-sub" id="cierre-sub" style="text-align:center">Resumen del turno</div>
+    </div>
+    <div id="cierre-resumen" style="margin-bottom:18px"></div>
+    <div class="field">
+      <label>Efectivo contado en caja al cerrar</label>
+      <input type="number" id="cierre-contado" placeholder="Cuenta el dinero físico y escríbelo acá" min="0" oninput="recalcCierre()" style="font-size:18px;padding:12px">
+    </div>
+    <div id="cierre-diferencia" style="margin-bottom:16px"></div>
+    <div class="field">
+      <label>Nota de cierre</label>
+      <input type="text" id="cierre-nota" placeholder="Ej: Todo cuadra, sin novedad">
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" style="flex:1;min-width:160px" onclick="cerrarCaja()">🔒 Cerrar caja</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cierre-bg').style.display='none'">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL TICKET / FACTURA ═══════ -->
+<div id="ticket-backdrop" style="
+  display:none; position:fixed; inset:0; z-index:600;
+  background:rgba(0,0,0,0.87); backdrop-filter:blur(6px);
+  align-items:center; justify-content:center; padding:20px;
+  animation:fadeUp .25s ease;
+" onclick="cerrarTicket(event)">
+  <div id="ticket-controls" style="position:fixed; top:20px; right:24px; display:flex; gap:10px; z-index:700;">
+    <button class="btn btn-red" onclick="imprimirTicket()" style="gap:8px">🖨️ Imprimir</button>
+    <button class="btn btn-dark" onclick="descargarTicketPDF()" style="gap:8px">⬇️ PDF</button>
+    <button class="btn btn-ghost" onclick="cerrarTicket()" style="gap:8px">✕ Cerrar</button>
+  </div>
+  <div id="ticket-wrap" onclick="event.stopPropagation()" style="
+    background:#fff; border-radius:4px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+    width:100%; max-width:340px;
+    font-family:'Courier New', Courier, monospace;
+    overflow:hidden; position:relative; margin-top:36px;">
+    <div style="height:14px;background:#fff;background-image:radial-gradient(circle at 50% 0%,transparent 6px,#fff 6px);background-size:16px 14px;background-repeat:repeat-x;border-top:1px dashed #ddd;"></div>
+    <div id="ticket-content" style="padding:4px 24px 8px;">
+      <div style="text-align:center;padding:10px 0 8px;">
+        <div style="font-size:20px;font-weight:900;letter-spacing:0.06em;color:#0d0d0d;line-height:1;">GYOZA HOUSE</div>
+        <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#c8102e;margin-top:3px;">Ramen · Gyozas · Comida Asiática</div>
+        <div style="margin:10px 0 4px;border-top:1px dashed #ccc;"></div>
+        <div id="tk-fecha" style="font-size:10px;color:#666;letter-spacing:.04em;"></div>
+        <div id="tk-num"   style="font-size:9px;color:#aaa;margin-top:2px;letter-spacing:.06em;"></div>
+      </div>
+      <div style="border-top:1px dashed #ccc;margin:6px 0;"></div>
+      <div style="display:flex;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;padding:4px 0 6px;">
+        <span style="flex:1">Producto</span>
+        <span style="width:30px;text-align:center">Cant</span>
+        <span style="width:70px;text-align:right">Precio</span>
+        <span style="width:72px;text-align:right">Subtotal</span>
+      </div>
+      <div id="tk-items" style="margin-bottom:6px;"></div>
+      <div style="border-top:1px dashed #ccc;margin:6px 0;"></div>
+      <div id="tk-totales" style="padding:4px 0 8px;"></div>
+      <div style="border-top:2px solid #0d0d0d;margin:4px 0 10px;"></div>
+      <div style="text-align:center;padding-bottom:14px;">
+        <div style="font-size:19px;margin-bottom:4px;">🍜</div>
+        <div style="font-size:9px;color:#999;letter-spacing:.12em;text-transform:uppercase;line-height:1.7;">
+          ¡Arigatou gozaimasu!<br>Gyoza House · ¡Vuelve pronto!
+        </div>
+        <div id="tk-qr-placeholder" style="margin-top:10px;font-size:8px;color:#ccc;letter-spacing:.08em;">— — — — — — — — — — —</div>
+      </div>
+    </div>
+    <div style="height:14px;background:#fff;background-image:radial-gradient(circle at 50% 100%,transparent 6px,#fff 6px);background-size:16px 14px;background-repeat:repeat-x;border-bottom:1px dashed #ddd;"></div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL EGRESO DE CAJA ═══════ -->
+<div id="modal-egreso-bg" class="modal-backdrop" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:460px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:8px">💸</div>
+      <div class="modal-title" style="font-size:24px;text-align:center">Registrar egreso</div>
+      <div class="modal-sub" style="text-align:center">Saldo disponible: <span id="eg-saldo-actual" style="color:var(--red-soft);font-weight:700">—</span></div>
+    </div>
+    <div id="alert-egreso"></div>
+    <div class="field">
+      <label>Categoría del gasto</label>
+      <select id="eg-cat">
+        <option value="insumos">🥢 Insumos / Materias primas</option>
+        <option value="personal">👤 Pago de personal</option>
+        <option value="servicios">🔧 Servicios / Mantenimiento</option>
+        <option value="domicilio">🛵 Domicilio / Transporte</option>
+        <option value="otros">📌 Otros</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Monto del egreso</label>
+      <input type="number" id="eg-monto" placeholder="Ej: 15000" min="0" style="font-size:20px;padding:14px" oninput="actualizarSaldoEgreso()">
+    </div>
+    <div class="field">
+      <label>Descripción del gasto</label>
+      <input type="text" id="eg-desc" placeholder="Ej: Compra caldo de cerdo">
+    </div>
+    <div class="field">
+      <label>Registrado por</label>
+      <input type="text" id="eg-cajero" placeholder="Nombre del cajero o turno">
+    </div>
+    <hr class="deco">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-full btn-danger" style="flex:1" onclick="registrarEgreso()">Registrar egreso</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-egreso-bg').style.display='none'">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS — orden de carga importante:
+     1. state.js     → datos y persistencia
+     2. utils.js     → helpers globales
+     3. nav.js       → navegación
+     4. logic/*      → lógica de negocio
+     5. ui/*         → renderizado
+     ═══════════════════════════════════════════ -->
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/logic/ventas.js"></script>
+<script src="js/logic/inventario.js"></script>
+<script src="js/logic/historial.js"></script>
+<script src="js/logic/insumos.js"></script>
+<script src="js/logic/caja-fix.js"></script>
+<script src="js/ui/dashboard-fix.js"></script>
+<script src="js/ui/ticket.js"></script>
+
+<script>
+  // ══ INIT ══
+  if (!prods.length) cargarMenuInicial();
+  goTo('dashboard');
+  if (!cajaActual && !cajaHistorial.length) {
+    setTimeout(() => abrirModalApertura(), 600);
+  }
+  renderVentas();
+</script>
+
+</body>
+</html>
