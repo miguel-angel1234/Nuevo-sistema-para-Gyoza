@@ -1,62 +1,102 @@
-/* ═══════════════════════════════════════════════
-   GYOZA HOUSE — firebase/db.js
-   Placeholder para la integración con Firebase.
+/* Firebase/db.js
+   Repositorios Firestore + fallback local.
+*/
+(function dbModule(global) {
+  const gh = global.GHFirebase;
+  const KEYS = {
+    products: 'gh_prods',
+    sales: 'gh_ventas',
+    supplies: 'gh_insumos',
+    recipes: 'gh_recetas',
+    inventoryMovements: 'gh_consumo',
+    cashCurrent: 'gh_caja_actual',
+    cashHistory: 'gh_caja_hist',
+    expenses: 'gh_egresos',
+    suppliers: 'gh_proveedores',
+    supplierPurchases: 'gh_compras_prov',
+    supplierPayments: 'gh_pagos_prov'
+  };
 
-   Cuando llegue el momento de migrar, este archivo
-   reemplaza las funciones save(), saveInsumos(),
-   saveCaja() y saveEgresos() de state.js.
+  const DOCS = {
+    products: 'products',
+    sales: 'sales',
+    supplies: 'supplies',
+    recipes: 'recipes',
+    inventoryMovements: 'inventory_movements',
+    cashCurrent: 'cash_current',
+    cashHistory: 'cash_history',
+    expenses: 'expenses',
+    suppliers: 'suppliers',
+    supplierPurchases: 'supplier_purchases',
+    supplierPayments: 'supplier_payments'
+  };
 
-   PASOS PARA MIGRAR:
-   1. Instalar Firebase: npm install firebase
-   2. Crear proyecto en https://console.firebase.google.com
-   3. Activar Firestore Database en modo producción
-   4. Copiar la config de tu proyecto aquí abajo
-   5. Reemplazar las funciones de persistencia
+  function readLocal(key, fallback) {
+    try {
+      return JSON.parse(localStorage.getItem(KEYS[key]) || JSON.stringify(fallback));
+    } catch (_) {
+      return fallback;
+    }
+  }
 
-   ─────────────────────────────────────────────
-   EJEMPLO DE INTEGRACIÓN FUTURA:
-   ─────────────────────────────────────────────
+  function writeLocal(key, value) {
+    localStorage.setItem(KEYS[key], JSON.stringify(value));
+  }
 
-   import { initializeApp } from "firebase/app";
-   import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
+  async function readCloud(key) {
+    if (!gh?.ready || !gh.db) return null;
+    const snap = await gh.db.collection('app_state').doc(DOCS[key]).get();
+    if (!snap.exists) return null;
+    return snap.data()?.payload ?? null;
+  }
 
-   const firebaseConfig = {
-     apiKey:            "TU_API_KEY",
-     authDomain:        "tu-proyecto.firebaseapp.com",
-     projectId:         "tu-proyecto",
-     storageBucket:     "tu-proyecto.appspot.com",
-     messagingSenderId: "TU_SENDER_ID",
-     appId:             "TU_APP_ID"
-   };
+  async function writeCloud(key, value) {
+    if (!gh?.ready || !gh.db) return;
+    await gh.db.collection('app_state').doc(DOCS[key]).set({
+      payload: value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
 
-   const app = initializeApp(firebaseConfig);
-   const db  = getFirestore(app);
+  async function seedIfEmpty(bundle) {
+    if (!gh?.ready || !gh.db) return;
+    const ref = gh.db.collection('app_state').doc('metadata');
+    const snap = await ref.get();
+    if (snap.exists) return;
 
-   // Reemplazar save() de state.js:
-   async function save() {
-     await setDoc(doc(db, "tienda", "prods"),  { data: prods  });
-     await setDoc(doc(db, "tienda", "ventas"), { data: ventas });
-   }
+    const batch = gh.db.batch();
+    Object.entries(bundle).forEach(([k, v]) => {
+      batch.set(gh.db.collection('app_state').doc(DOCS[k]), {
+        payload: v,
+        seededAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
+    batch.set(ref, {
+      version: 2,
+      seededAt: firebase.firestore.FieldValue.serverTimestamp(),
+      schema: {
+        products: 'productos',
+        sales: 'ventas',
+        supplies: 'insumos',
+        recipes: 'recetas',
+        inventoryMovements: 'movimientos inventario',
+        cashCurrent: 'caja actual',
+        cashHistory: 'historial caja',
+        expenses: 'egresos',
+        suppliers: 'proveedores',
+        supplierPurchases: 'compras a proveedor',
+        supplierPayments: 'pagos/abonos/adelantos'
+      }
+    }, { merge: true });
+    await batch.commit();
+  }
 
-   // Reemplazar saveInsumos() de state.js:
-   async function saveInsumos() {
-     await setDoc(doc(db, "tienda", "insumos"),  { data: insumos    });
-     await setDoc(doc(db, "tienda", "recetas"),  { data: recetas    });
-     await setDoc(doc(db, "tienda", "consumo"),  { data: consumoLog });
-   }
-
-   // Reemplazar saveCaja() de state.js:
-   async function saveCaja() {
-     await setDoc(doc(db, "caja", "actual"),    { data: cajaActual    });
-     await setDoc(doc(db, "caja", "historial"), { data: cajaHistorial });
-   }
-
-   // Reemplazar saveEgresos() de state.js:
-   async function saveEgresos() {
-     await setDoc(doc(db, "caja", "egresos"), { data: egresos });
-   }
-
-   ═══════════════════════════════════════════════ */
-
-// Este archivo está vacío intencionalmente.
-// La persistencia actual vive en js/state.js usando localStorage.
+  global.GHDB = {
+    KEYS,
+    readLocal,
+    writeLocal,
+    readCloud,
+    writeCloud,
+    seedIfEmpty
+  };
+})(window);

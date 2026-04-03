@@ -5,10 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Gyoza House — Sistema</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="Styles/main.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+<div id="auth-screen" class="auth-screen">
+  <form class="auth-card" id="auth-form">
+    <div class="section-label">Acceso administrador</div>
+    <div class="card-title">Iniciar sesión</div>
+    <p style="color:var(--muted);margin-bottom:12px">Acceso exclusivo para <b>gyozahouseadmin@gmail.com</b>.</p>
+    <div id="auth-alert"></div>
+    <div class="field">
+      <label>Correo</label>
+      <input type="email" id="auth-email" required placeholder="gyozahouseadmin@gmail.com">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="auth-pass" required placeholder="Contraseña de Firebase Auth">
+    </div>
+    <button class="btn btn-red btn-full">Entrar</button>
+  </form>
+</div>
+
+<div id="app-shell" style="display:none">
 
 <!-- ═══════ HEADER ═══════ -->
 <header class="header">
@@ -32,13 +52,21 @@
       <div class="logo-tagline">Ramen · Gyozas · Comida Asiática</div>
     </div>
   </div>
+
   <nav class="nav-tabs">
     <div class="nav-tab" onclick="goTo('dashboard')" id="tab-dashboard"><span class="tab-icon">🏮</span>Inicio</div>
     <div class="nav-tab active" onclick="goTo('ventas')" id="tab-ventas"><span class="tab-icon">🍜</span>Ventas</div>
     <div class="nav-tab" onclick="goTo('inventario')" id="tab-inventario"><span class="tab-icon">📦</span>Inventario</div>
     <div class="nav-tab" onclick="goTo('historial')" id="tab-historial"><span class="tab-icon">📊</span>Historial</div>
     <div class="nav-tab" onclick="goTo('insumos')" id="tab-insumos"><span class="tab-icon">🥢</span>Insumos</div>
+    <div class="nav-tab" onclick="goTo('proveedores')" id="tab-proveedores"><span class="tab-icon">🏷️</span>Proveedores</div>
+    <div class="nav-tab" onclick="goTo('reportes')" id="tab-reportes"><span class="tab-icon">📈</span>Reportes</div>
   </nav>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:0 0 0 14px">
+    <span id="session-email" style="font-size:11px;color:var(--muted)"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">Cerrar sesión</button>
+  </div>
 </header>
 
 <!-- ═══════ MAIN ═══════ -->
@@ -48,6 +76,7 @@
   <div id="sec-dashboard" class="section active">
     <div id="dash-caja-banner"></div>
     <div class="g4" id="dash-stats" style="margin-bottom:20px"></div>
+
     <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;margin-bottom:18px;align-items:start" id="dash-mid-grid">
       <div class="card">
         <div class="section-label">Tendencia</div>
@@ -62,6 +91,7 @@
         <div id="dash-top-prods"></div>
       </div>
     </div>
+
     <div class="g2" style="margin-bottom:18px;align-items:start">
       <div class="card">
         <div class="section-label">Comportamiento</div>
@@ -76,11 +106,13 @@
         <div id="dash-insumos-criticos"></div>
       </div>
     </div>
+
     <div class="card" id="dash-ultimo-cierre-wrap">
       <div class="section-label">Caja</div>
       <div class="card-title" style="margin-bottom:14px">Resumen del último turno</div>
       <div id="dash-ultimo-cierre"></div>
     </div>
+
     <div class="card" id="dash-egresos-wrap" style="margin-top:18px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
         <div>
@@ -97,6 +129,7 @@
   <div id="sec-ventas" class="section">
     <div id="alert-ventas"></div>
     <div class="cuentas-bar" id="cuentas-bar"></div>
+
     <div class="venta-layout">
       <div>
         <div class="card">
@@ -106,22 +139,33 @@
           <div id="cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;margin-bottom:4px"></div>
           <div class="prod-grid" id="prod-grid"></div>
         </div>
+
         <div class="card" style="margin-top:14px">
           <div class="section-label">Agregar manual</div>
           <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
-            <div class="field" style="margin:0"><label>Producto</label><select id="sel-prod"></select></div>
-            <div class="field" style="margin:0"><label>Cant.</label><input type="number" id="sel-qty" value="1" min="1" style="width:70px"></div>
+            <div class="field" style="margin:0">
+              <label>Producto</label>
+              <select id="sel-prod"></select>
+            </div>
+            <div class="field" style="margin:0">
+              <label>Cant.</label>
+              <input type="number" id="sel-qty" value="1" min="1" style="width:70px">
+            </div>
             <button class="btn btn-dark" onclick="addFromSel()">Agregar</button>
           </div>
         </div>
       </div>
+
       <div class="carrito">
         <div class="carrito-head">
           <div class="carrito-head-title" id="carrito-title">Orden actual</div>
           <div class="carrito-head-sub">🍜 Gyoza House · <span id="carrito-count">0 productos</span></div>
         </div>
         <div class="carrito-body" id="carrito-body">
-          <div class="empty" style="padding:30px"><div class="empty-icon">🥢</div><div class="empty-text">Agrega productos</div></div>
+          <div class="empty" style="padding:30px">
+            <div class="empty-icon">🥢</div>
+            <div class="empty-text">Agrega productos</div>
+          </div>
         </div>
         <div class="carrito-foot">
           <div class="total-row">
@@ -161,6 +205,7 @@
         </div>
         <button class="btn btn-red" onclick="guardarProd()">Guardar producto</button>
       </div>
+
       <div class="card">
         <div class="section-label">Mercancía</div>
         <div class="card-title">Entrada de stock</div>
@@ -169,6 +214,7 @@
         <button class="btn btn-green" onclick="registrarEntrada()">Registrar entrada</button>
       </div>
     </div>
+
     <div class="card">
       <div class="section-label">Inventario</div>
       <div class="card-title">Productos actuales</div>
@@ -199,6 +245,113 @@
     </div>
   </div>
 
+  <!-- PROVEEDORES -->
+  <div id="sec-proveedores" class="section">
+    <div id="alert-proveedores"></div>
+
+    <div class="g2" style="align-items:start;margin-bottom:16px">
+      <div class="card">
+        <div class="section-label">Directorio</div>
+        <div class="card-title">Nuevo proveedor</div>
+        <div class="field"><label>Nombre</label><input id="prov-nombre" type="text"></div>
+        <div class="field"><label>Teléfono</label><input id="prov-tel" type="text"></div>
+        <div class="field"><label>Contacto</label><input id="prov-contacto" type="text"></div>
+        <button class="btn btn-red" onclick="crearProveedor()">Guardar proveedor</button>
+      </div>
+
+      <div class="card">
+        <div class="section-label">Gestión</div>
+        <div class="card-title">Buscar proveedor</div>
+        <div class="field"><label>Buscar</label><input id="prov-buscar" type="text" oninput="renderProveedores()" placeholder="Nombre proveedor..."></div>
+      </div>
+    </div>
+
+    <div class="g2" style="align-items:start;margin-bottom:16px">
+      <div class="card">
+        <div class="section-label">Compras</div>
+        <div class="card-title">Registrar compra a proveedor</div>
+        <div class="field"><label>Proveedor</label><select id="prov-compra-proveedor"></select></div>
+        <div class="field"><label>Concepto</label><input id="prov-compra-concepto" type="text" placeholder="Ej: Champiñones"></div>
+        <div class="g2">
+          <div class="field"><label>Monto</label><input id="prov-compra-monto" type="number" min="0"></div>
+          <div class="field"><label>Fecha</label><input id="prov-compra-fecha" type="date"></div>
+        </div>
+        <button class="btn btn-green" onclick="registrarCompraProveedor()">Guardar compra</button>
+      </div>
+
+      <div class="card">
+        <div class="section-label">Pagos</div>
+        <div class="card-title">Registrar abono / adelanto</div>
+        <div class="field"><label>Proveedor</label><select id="prov-pago-proveedor"></select></div>
+        <div class="g2">
+          <div class="field"><label>Monto</label><input id="prov-pago-monto" type="number" min="0"></div>
+          <div class="field"><label>Tipo</label><select id="prov-pago-tipo"><option>abono</option><option>adelanto</option><option>pago</option></select></div>
+        </div>
+        <div class="g2">
+          <div class="field"><label>Fecha</label><input id="prov-pago-fecha" type="date"></div>
+          <div class="field"><label>Nota</label><input id="prov-pago-nota" type="text"></div>
+        </div>
+        <button class="btn btn-green" onclick="registrarPagoProveedor()">Guardar pago</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Listado y saldo por proveedor</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Proveedor</th><th>Teléfono</th><th>Compras</th><th>Pagos</th><th>Saldo</th></tr></thead>
+          <tbody id="prov-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Historial de compras</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Concepto</th><th>Monto</th></tr></thead>
+            <tbody id="prov-compras-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Historial de pagos</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Tipo</th><th>Monto</th></tr></thead>
+            <tbody id="prov-pagos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORTES -->
+  <div id="sec-reportes" class="section">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-label">Filtros</div>
+      <div class="card-title">Reportes administrativos</div>
+      <div class="g2">
+        <div class="field"><label>Desde</label><input type="date" id="rep-desde"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="rep-hasta"></div>
+      </div>
+      <button class="btn btn-red" onclick="renderReportes()">Aplicar filtros</button>
+    </div>
+
+    <div class="g4" id="rep-stats" style="margin-bottom:16px"></div>
+
+    <div class="g2">
+      <div class="card"><div class="card-title">Ventas por producto</div><div id="rep-top-productos"></div></div>
+      <div class="card"><div class="card-title">Ventas por categoría</div><div id="rep-ventas-cat"></div></div>
+    </div>
+
+    <div class="g2" style="margin-top:16px">
+      <div class="card"><div class="card-title">Gastos por categoría</div><div id="rep-gastos-cat"></div></div>
+      <div class="card"><div class="card-title">Compras por proveedor</div><div id="rep-compras-prov"></div></div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ═══════ INSUMOS (fuera del main) ═══════ -->
@@ -206,13 +359,15 @@
   <div id="alert-insumos"></div>
   <div id="insumos-alertas-wrap"></div>
   <div class="g4" id="insumos-stats" style="margin-bottom:20px"></div>
+
   <div class="g2" style="align-items:start;margin-bottom:18px">
     <div class="card">
       <div class="section-label">Almacén</div>
       <div class="card-title">Nuevo insumo</div>
       <div class="field"><label>Nombre del insumo</label><input type="text" id="ins-nombre" placeholder="Ej: Caldo de cerdo"></div>
       <div class="g2">
-        <div class="field"><label>Unidad de medida</label>
+        <div class="field">
+          <label>Unidad de medida</label>
           <select id="ins-unidad">
             <option value="ml">ml (mililitros)</option>
             <option value="L">L (litros)</option>
@@ -232,6 +387,7 @@
       </div>
       <button class="btn btn-red" onclick="guardarInsumo()">Guardar insumo</button>
     </div>
+
     <div class="card">
       <div class="section-label">Mercancía</div>
       <div class="card-title">Entrada de insumos</div>
@@ -417,7 +573,7 @@
         <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#c8102e;margin-top:3px;">Ramen · Gyozas · Comida Asiática</div>
         <div style="margin:10px 0 4px;border-top:1px dashed #ccc;"></div>
         <div id="tk-fecha" style="font-size:10px;color:#666;letter-spacing:.04em;"></div>
-        <div id="tk-num"   style="font-size:9px;color:#aaa;margin-top:2px;letter-spacing:.06em;"></div>
+        <div id="tk-num" style="font-size:9px;color:#aaa;margin-top:2px;letter-spacing:.06em;"></div>
       </div>
       <div style="border-top:1px dashed #ccc;margin:6px 0;"></div>
       <div style="display:flex;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;padding:4px 0 6px;">
@@ -451,6 +607,7 @@
       <div class="modal-sub" style="text-align:center">Saldo disponible: <span id="eg-saldo-actual" style="color:var(--red-soft);font-weight:700">—</span></div>
     </div>
     <div id="alert-egreso"></div>
+
     <div class="field">
       <label>Categoría del gasto</label>
       <select id="eg-cat">
@@ -461,25 +618,56 @@
         <option value="otros">📌 Otros</option>
       </select>
     </div>
+
+    <div class="field">
+      <label>Subcategoría (opcional)</label>
+      <input type="text" id="eg-subcat" placeholder="Ej: proteínas, limpieza, mantenimiento">
+    </div>
+
+    <div class="field">
+      <label>Proveedor (opcional)</label>
+      <select id="eg-proveedor">
+        <option value="">Sin proveedor</option>
+      </select>
+    </div>
+
     <div class="field">
       <label>Monto del egreso</label>
       <input type="number" id="eg-monto" placeholder="Ej: 15000" min="0" style="font-size:20px;padding:14px" oninput="actualizarSaldoEgreso()">
     </div>
+
     <div class="field">
       <label>Descripción del gasto</label>
       <input type="text" id="eg-desc" placeholder="Ej: Compra caldo de cerdo">
     </div>
+
+    <div class="field">
+      <label>Observación (opcional)</label>
+      <input type="text" id="eg-obs" placeholder="Detalle adicional">
+    </div>
+
     <div class="field">
       <label>Registrado por</label>
       <input type="text" id="eg-cajero" placeholder="Nombre del cajero o turno">
     </div>
+
     <hr class="deco">
+
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-full btn-danger" style="flex:1" onclick="registrarEgreso()">Registrar egreso</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-egreso-bg').style.display='none'">Cancelar</button>
     </div>
   </div>
 </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="Firebase/config.js"></script>
+<script src="Firebase/auth.js"></script>
+<script src="Firebase/db.js"></script>
 
 <!-- ═══════════════════════════════════════════
      SCRIPTS — orden de carga importante:
@@ -489,25 +677,22 @@
      4. logic/*      → lógica de negocio
      5. ui/*         → renderizado
      ═══════════════════════════════════════════ -->
-<script src="js/state.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/nav.js"></script>
-<script src="js/logic/ventas.js"></script>
-<script src="js/logic/inventario.js"></script>
-<script src="js/logic/historial.js"></script>
-<script src="js/logic/insumos.js"></script>
-<script src="js/logic/caja-fix.js"></script>
-<script src="js/ui/dashboard-fix.js"></script>
-<script src="js/ui/ticket.js"></script>
+<script src="Js/state.js"></script>
+<script src="Js/utils.js"></script>
+<script src="Js/nav.js"></script>
+<script src="Js/Logic/ventas.js"></script>
+<script src="Js/Logic/inventario.js"></script>
+<script src="Js/Logic/historial.js"></script>
+<script src="Js/Logic/insumos.js"></script>
+<script src="Js/Logic/proveedores.js"></script>
+<script src="Js/Logic/reportes.js"></script>
+<script src="Js/Logic/caja-fix.js"></script>
+<script src="Js/Ui/dashboard-fix.js"></script>
+<script src="Js/Ui/ticket.js"></script>
+<script src="Js/Ui/auth-ui.js"></script>
 
 <script>
-  // ══ INIT ══
-  if (!prods.length) cargarMenuInicial();
-  goTo('dashboard');
-  if (!cajaActual && !cajaHistorial.length) {
-    setTimeout(() => abrirModalApertura(), 600);
-  }
-  renderVentas();
+  bootAppWithAuth();
 </script>
 
 </body>

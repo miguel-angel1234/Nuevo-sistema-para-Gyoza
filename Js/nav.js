@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════ */
 
 function goTo(tab) {
-  ['dashboard', 'ventas', 'inventario', 'historial', 'insumos'].forEach(t => {
+  ['dashboard', 'ventas', 'inventario', 'historial', 'insumos', 'proveedores', 'reportes'].forEach(t => {
     const sec   = document.getElementById('sec-' + t);
     const tabEl = document.getElementById('tab-' + t);
     if (sec)   sec.classList.toggle('active', t === tab);
@@ -20,4 +20,6 @@ function goTo(tab) {
   if (tab === 'inventario') renderInv();
   if (tab === 'historial')  renderHistorial();
   if (tab === 'insumos')    renderInsumos();
+  if (tab === 'proveedores') renderProveedores();
+  if (tab === 'reportes') renderReportes();
 }
