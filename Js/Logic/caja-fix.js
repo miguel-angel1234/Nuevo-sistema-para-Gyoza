@@ -212,3 +212,69 @@ function eliminarEgreso(id) {
   saveEgresos();
   renderDashboard();
 }
+
+function renderBannerRecuperacion() {
+  const existing = document.getElementById('banner-recuperacion');
+  if (existing) existing.remove();
+
+  if (!window._cajaRecuperada || !cajaActual) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'banner-recuperacion';
+  banner.style.cssText = `
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    background:linear-gradient(135deg,rgba(232,160,64,.15),rgba(180,110,20,.1));
+    border:1px solid rgba(232,160,64,.4);
+    border-radius:13px;
+    padding:14px 20px;
+    margin-bottom:12px;
+    animation:fadeUp .3s ease;
+  `;
+
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:22px">⚠️</span>
+      <div>
+        <div style="
+          font-size:11px;
+          font-weight:700;
+          letter-spacing:.14em;
+          text-transform:uppercase;
+          color:#e8a040;
+          margin-bottom:3px">
+          Sesión recuperada
+        </div>
+        <div style="font-size:13px;color:var(--white-dim)">
+          El navegador se reinició con la caja de
+          <b>${cajaActual.cajero}</b> abierta desde
+          ${fechaLinda(cajaActual.fechaApertura)} ${cajaActual.horaApertura}.
+          Puedes continuar normalmente.
+        </div>
+      </div>
+    </div>
+    <button
+      onclick="this.parentElement.remove(); window._cajaRecuperada = false;"
+      style="
+        padding:7px 16px;
+        border-radius:8px;
+        border:1px solid rgba(232,160,64,.35);
+        background:rgba(232,160,64,.12);
+        color:#e8a040;
+        font-size:12px;
+        font-weight:700;
+        cursor:pointer;
+        font-family:var(--f-body);
+        white-space:nowrap">
+      Entendido ✓
+    </button>
+  `;
+
+  const dashBanner = document.getElementById('dash-caja-banner');
+  if (dashBanner && dashBanner.parentNode) {
+    dashBanner.parentNode.insertBefore(banner, dashBanner);
+  }
+}
