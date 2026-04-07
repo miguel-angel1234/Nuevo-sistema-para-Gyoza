@@ -20,9 +20,18 @@ function renderBar() {
 }
 
 function nuevaCuenta() {
-  contadorCuenta++;
+  const numerosEnUso = cuentas.map(c => {
+    const match = c.nombre.match(/^Mesa (\d+)$/);
+    return match ? parseInt(match[1]) : null;
+  }).filter(n => n !== null);
+
+  let numero = 1;
+  while (numerosEnUso.includes(numero)) numero++;
+
   const id = 'c' + Date.now();
-  cuentas.push({ id, nombre: 'Mesa ' + contadorCuenta, items: [], pago: null });
+  contadorCuenta = numero;
+  cuentas.push({ id, nombre: 'Mesa ' + numero, items: [], pago: null });
+  saveCuentas();
   activarCuenta(id);
 }
 
@@ -40,6 +49,7 @@ function cerrarCuenta(id) {
   if (c && c.items.length && !confirm(`¿Cerrar "${c.nombre}"? Se perderán los productos.`)) return;
   cuentas = cuentas.filter(x => x.id !== id);
   if (cuentaActiva === id) cuentaActiva = cuentas[cuentas.length - 1].id;
+  saveCuentas();
   renderBar();
   renderCart();
 }
@@ -102,6 +112,7 @@ function addToCart(pid, qty = 1) {
   } else {
     c.items.push({ id: pid, nombre: p.nombre, precio: p.precio, qty });
   }
+  saveCuentas();
   renderCart();
   renderBar();
 }
@@ -115,6 +126,7 @@ function addFromSel() {
 function removeFromCart(pid) {
   const c = getCuenta();
   c.items = c.items.filter(x => x.id !== pid);
+  saveCuentas();
   renderCart();
   renderBar();
 }
@@ -125,6 +137,7 @@ function limpiarCarrito() {
   c.pago  = null;
   document.getElementById('pago-input').value = '';
   document.getElementById('cambio-box').style.display = 'none';
+  saveCuentas();
   renderCart();
   renderBar();
 }

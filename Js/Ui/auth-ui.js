@@ -59,6 +59,7 @@
 
       setAuthMsg('');
       await bootstrapState();
+      activarListenersTiempoReal();
       if (!prods.length) cargarMenuInicial();
       goTo('dashboard');
       if (!cajaActual && !cajaHistorial.length) {

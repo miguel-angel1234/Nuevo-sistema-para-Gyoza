@@ -41,6 +41,22 @@ const EGRESO_CATS = {
 let _saveTimer = null;
 let _pendingCloudKeys = new Set();
 
+function resolveBootstrapValue(key, localValue, localUpdatedAt, cloudRecord) {
+  // Firestore siempre tiene prioridad si existe.
+  // El localStorage solo se usa como fallback offline.
+  if (!cloudRecord?.exists) {
+    return { value: localValue, updatedAt: localUpdatedAt || 0 };
+  }
+
+  const cloudValue = cloudRecord.payload;
+  const cloudUpdatedAt = cloudRecord.updatedAt || 0;
+
+  return {
+    value: cloudValue !== null ? cloudValue : localValue,
+    updatedAt: cloudUpdatedAt || localUpdatedAt || 0
+  };
+}
+
 function getBundleFromState() {
   return {
     products: prods,
@@ -53,7 +69,8 @@ function getBundleFromState() {
     expenses: egresos,
     suppliers: proveedores,
     supplierPurchases: comprasProveedor,
-    supplierPayments: pagosProveedor
+    supplierPayments: pagosProveedor,
+    tables: cuentas
   };
 }
 
@@ -69,15 +86,20 @@ function hydrateBundle(bundle) {
   proveedores = bundle.suppliers || [];
   comprasProveedor = bundle.supplierPurchases || [];
   pagosProveedor = bundle.supplierPayments || [];
+  cuentas = bundle.tables || [{ id: 'c1', nombre: 'Mesa 1', items: [], pago: null }];
+  if (!cuentas.length) cuentas = [{ id: 'c1', nombre: 'Mesa 1', items: [], pago: null }];
+  cuentaActiva = cuentas[0].id;
   cajaAbierta = !!cajaActual;
 }
 
 async function bootstrapState() {
   const keys = Object.keys(getBundleFromState());
   const fromLocal = {};
+  const fromLocalMeta = {};
 
   keys.forEach(k => {
     fromLocal[k] = GHDB.readLocal(k, k === 'cashCurrent' ? null : []);
+    fromLocalMeta[k] = GHDB.readLocalUpdatedAt(k);
   });
 
   if (!window.GHFirebase?.ready) {
@@ -86,8 +108,8 @@ async function bootstrapState() {
   }
 
   try {
-    const cloudReads = await Promise.all(keys.map(k => GHDB.readCloud(k)));
-    const hasCloudData = cloudReads.some(v => v !== null);
+    const cloudReads = await Promise.all(keys.map(k => GHDB.readCloudRecord(k)));
+    const hasCloudData = cloudReads.some(v => v?.exists);
 
     if (!hasCloudData) {
       await GHDB.seedIfEmpty(fromLocal);
@@ -96,14 +118,17 @@ async function bootstrapState() {
     }
 
     const hydrated = {};
+    const hydratedMeta = {};
     keys.forEach((k, idx) => {
-      hydrated[k] = cloudReads[idx] !== null ? cloudReads[idx] : fromLocal[k];
+      const resolved = resolveBootstrapValue(k, fromLocal[k], fromLocalMeta[k], cloudReads[idx]);
+      hydrated[k] = resolved.value;
+      hydratedMeta[k] = resolved.updatedAt;
     });
 
     hydrateBundle(hydrated);
 
     // espejo local para arranques offline
-    keys.forEach(k => GHDB.writeLocal(k, hydrated[k]));
+    keys.forEach(k => GHDB.writeLocal(k, hydrated[k], hydratedMeta[k] || Date.now()));
   } catch (err) {
     console.error('[Gyoza] Error cargando Firestore, usando local.', err);
     hydrateBundle(fromLocal);
@@ -111,17 +136,22 @@ async function bootstrapState() {
 }
 
 function queueCloudSync(keys) {
-  keys.forEach(k => _pendingCloudKeys.add(k));
+  const snapshot = getBundleFromState();
+  const updatedAt = Date.now();
+
+  keys.forEach(k => {
+    _pendingCloudKeys.add(k);
+    GHDB.writeLocal(k, snapshot[k], updatedAt);
+  });
 
   if (_saveTimer) clearTimeout(_saveTimer);
 
   _saveTimer = setTimeout(async () => {
     const batchKeys = [..._pendingCloudKeys];
     _pendingCloudKeys.clear();
+    _saveTimer = null;
 
     const bundle = getBundleFromState();
-
-    batchKeys.forEach(k => GHDB.writeLocal(k, bundle[k]));
 
     if (!window.GHFirebase?.ready) return;
 
@@ -152,6 +182,10 @@ function saveEgresos() {
 
 function saveProveedores() {
   queueCloudSync(['suppliers', 'supplierPurchases', 'supplierPayments']);
+}
+
+function saveCuentas() {
+  queueCloudSync(['tables']);
 }
 
 // ══ HELPERS DE ACCESO AL ESTADO ══
@@ -224,4 +258,99 @@ function cargarMenuInicial() {
   save();
 }
 
+// ══ LISTENERS EN TIEMPO REAL ══
+// Se activan después de bootstrapState para recibir cambios de otros usuarios.
+let _unsubscribers = [];
+
+function activarListenersTiempoReal() {
+  if (!window.GHFirebase?.ready) return;
+
+  // Cancela suscripciones previas si las hay
+  _unsubscribers.forEach(unsub => unsub());
+  _unsubscribers = [];
+
+  // Mapa: clave de estado → función que actualiza la variable en memoria y redibuja
+  const handlers = {
+    products: (val) => {
+      prods = val || [];
+      GHDB.writeLocal('products', prods);
+      if (typeof renderInv === 'function') renderInv();
+      if (typeof renderVentas === 'function') renderVentas();
+      if (typeof filtrarProds === 'function') filtrarProds();
+    },
+    sales: (val) => {
+      ventas = val || [];
+      GHDB.writeLocal('sales', ventas);
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    supplies: (val) => {
+      insumos = val || [];
+      GHDB.writeLocal('supplies', insumos);
+      if (typeof renderInsumos === 'function') renderInsumos();
+    },
+    recipes: (val) => {
+      recetas = val || [];
+      GHDB.writeLocal('recipes', recetas);
+    },
+    inventoryMovements: (val) => {
+      consumoLog = val || [];
+      GHDB.writeLocal('inventoryMovements', consumoLog);
+    },
+    cashCurrent: (val) => {
+      cajaActual = val || null;
+      cajaAbierta = !!cajaActual;
+      GHDB.writeLocal('cashCurrent', cajaActual);
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    cashHistory: (val) => {
+      cajaHistorial = val || [];
+      GHDB.writeLocal('cashHistory', cajaHistorial);
+    },
+    expenses: (val) => {
+      egresos = val || [];
+      GHDB.writeLocal('expenses', egresos);
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    suppliers: (val) => {
+      proveedores = val || [];
+      GHDB.writeLocal('suppliers', proveedores);
+      if (typeof renderProveedores === 'function') renderProveedores();
+    },
+    supplierPurchases: (val) => {
+      comprasProveedor = val || [];
+      GHDB.writeLocal('supplierPurchases', comprasProveedor);
+    },
+    supplierPayments: (val) => {
+      pagosProveedor = val || [];
+      GHDB.writeLocal('supplierPayments', pagosProveedor);
+    },
+    tables: (val) => {
+      if (!val || !val.length) return;
+      cuentas = val;
+      // Asegura que cuentaActiva sea válida
+      if (!cuentas.find(c => c.id === cuentaActiva)) {
+        cuentaActiva = cuentas[0].id;
+      }
+      GHDB.writeLocal('tables', cuentas);
+      if (typeof renderBar === 'function') renderBar();
+      if (typeof renderCart === 'function') renderCart();
+    }
+  };
+
+  // Marca de tiempo del arranque para ignorar el disparo inicial de onSnapshot
+  // (que devuelve los datos que ya cargamos en bootstrapState)
+  const arranque = Date.now();
+  const UMBRAL_MS = 3000; // ignora eventos en los primeros 3 seg
+
+  Object.entries(handlers).forEach(([key, handler]) => {
+    const unsub = GHDB.subscribeToKey(key, (payload) => {
+      // Evita reprocesar el snapshot inicial que Firestore dispara al suscribirse
+      if (Date.now() - arranque < UMBRAL_MS) return;
+      handler(payload);
+    });
+    _unsubscribers.push(unsub);
+  });
+}
+
 window.bootstrapState = bootstrapState;
+window.activarListenersTiempoReal = activarListenersTiempoReal;
